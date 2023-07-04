@@ -1,7 +1,7 @@
 use bls12_381::hash_to_curve::{ExpandMsgXmd, HashToCurve};
 use bls12_381::{pairing, G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
 
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 
 use ff::Field;
 use group::{Curve, GroupEncoding};
@@ -122,9 +122,9 @@ fn aggr_bls_diff_msg_pk_g1(mut rng: impl RngCore + CryptoRng) {
 /// following:
 /// * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
 /// * pk_deser_i = G1Decompress(pk_i) for i in [1, 10]
-/// * ds_scalar = SHA512(pk_1 || .. || pk_10) mod `period`, where `period` is the order of the group G2
+/// * ds_scalar = SHA256(pk_1 || .. || pk_10) mod `period`, where `period` is the order of the group G2
 /// * aggr_sig_deser = G2Decompress(aggr_sig)
-/// * aggr_pk = sum_{i\in[1,10]} ds_scalar * pk_deser_i
+/// * aggr_pk = sum_{i\in[1,10]} ds_scalar^i * pk_deser_i
 /// * Check that pairing(aggr_pk, hashed_msg) = pairing(G1Generator, aggr_sig_deser)
 fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
     let mut msg = [0u8; 32];
@@ -138,10 +138,19 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
     let sks = (0..10).map(|_| Scalar::random(&mut rng)).collect::<Vec<_>>();
     let pks = sks.iter().map(|sk| sk * G2Affine::generator()).collect::<Vec<_>>();
 
-    let mut hash = Sha512::new();
+    let mut hash = Sha256::new();
+    let mut scalar_bytes = [0u8; 32];
 
     pks.iter().for_each(|pk| hash.update(&pk.to_bytes()) );
-    let ds_scalar = Scalar::from_bytes_wide(&hash.finalize().as_slice().try_into().unwrap());
+    let out = hash.finalize();
+    println!("Output of hash: 0x{}", hex::encode(out.as_slice()));
+    let decoded_bytes = hex::decode("fc67e8340e7cea5202939c73fcf5716b").unwrap();
+    println!("hex decode: {:?}", decoded_bytes);
+    scalar_bytes[..16].copy_from_slice(&out.as_slice()[..16]);
+    let ds_scalar = Scalar::from_bytes(&scalar_bytes).unwrap();
+    println!("Scalar from hash: {:?}", ds_scalar.to_bytes());
+    println!("{:?}", num_bigint::BigUint::from_bytes_le(&ds_scalar.to_bytes()));
+    println!("{:?}", num_bigint::BigUint::from_bytes_be(&decoded_bytes));
 
     let mut ds_scalar_power = Scalar::one();
 
@@ -162,6 +171,8 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
         acc + ds_scalar_power * pk
     });
 
+    println!("Aggregate pk: {:?}", hex::encode(aggr_pk.to_bytes()));
+
     assert_eq!(pairing(&hashed_msg.to_affine(), &aggr_pk.to_affine()), pairing(&aggr_sig.to_affine(), &G2Affine::generator()));
 
 
@@ -178,7 +189,7 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
 /// signature `(A, r)`.
 ///
 /// To verify the signature, proceed as follows:
-/// * hash = SHA512(A || pk || msg)
+/// * hash = Sha256(A || pk || msg)
 /// * c = hash mod `period`, where `period` is the order of the group defined over G1
 /// * pk_deser = G1Decompress(pk)
 /// * A_deser = G1Decompress(A)
@@ -195,25 +206,28 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
     let pk = sk * G1Affine::generator();
     let nonce = Scalar::random(&mut rng);
     let announcement = nonce * G1Affine::generator();
-    let hasher = Sha512::new()
+    let hasher = Sha256::new()
         .chain(&announcement.to_bytes())
         .chain(&pk.to_bytes())
         .chain(&msg)
         .finalize();
 
-    let challenge = Scalar::from_bytes_wide(&hasher.as_slice().try_into().unwrap());
+    let mut scalar_bytes = [0u8; 32];
+    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
     let sig = (announcement, response);
 
     // verifier
-    let hasher = Sha512::new()
+    let hasher = Sha256::new()
         .chain(&announcement.to_bytes())
         .chain(&pk.to_bytes())
         .chain(&msg)
         .finalize();
 
-    let challenge = Scalar::from_bytes_wide(&hasher.as_slice().try_into().unwrap());
+    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
         response * G1Affine::generator(),
@@ -230,7 +244,7 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
 /// signature `(A, r)`.
 ///
 /// To verify the signature, proceed as follows:
-/// * hash = SHA512(A || pk || msg)
+/// * hash = Sha256(A || pk || msg)
 /// * c = hash mod `period`, where `period` is the order of the group defined over G2
 /// * pk_deser = G2Decompress(pk)
 /// * A_deser = G2Decompress(A)
@@ -247,25 +261,28 @@ fn schnorr_g2(mut rng: impl RngCore + CryptoRng) {
     let pk = sk * G2Affine::generator();
     let nonce = Scalar::random(&mut rng);
     let announcement = nonce * G2Affine::generator();
-    let hasher = Sha512::new()
+    let hasher = Sha256::new()
         .chain(&announcement.to_bytes())
         .chain(&pk.to_bytes())
         .chain(&msg)
         .finalize();
 
-    let challenge = Scalar::from_bytes_wide(&hasher.as_slice().try_into().unwrap());
+    let mut scalar_bytes = [0u8; 32];
+    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
     let sig = (announcement, response);
 
     // verifier
-    let hasher = Sha512::new()
+    let hasher = Sha256::new()
         .chain(&announcement.to_bytes())
         .chain(&pk.to_bytes())
         .chain(&msg)
         .finalize();
 
-    let challenge = Scalar::from_bytes_wide(&hasher.as_slice().try_into().unwrap());
+    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
         response * G2Affine::generator(),

@@ -12,7 +12,7 @@ key `pk`, and a signature `sig`. Verification of these test vectors should proce
    * pk_deser = G2Decompress(pk)
    * sig_deser = G1Decompress(sig)
    * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
-   * Check that pairing(pk_deser, hashed_msg) = pairing(G1Generator, sig_deser)
+   * Check that pairing(hashed_msg, pk_deser) = pairing(sig_deser, G2Generator)
 3. Aggregate BLS signature with the same key and different messages, with public key over G1. This
 function returns a list of 10 messages {`msg_1`, ..., `msg_10`}, a public key `pk`, and an
 aggregate signature `aggr_sig`. To verify the correctness of the test vectors, check the
@@ -27,23 +27,21 @@ function returns a message `msg`, ten public keys `{pk_1,...,pk_10}`, and an
 aggregate signature `aggr_sig`. To verify the correctness of the test vectors, check the
 following:
    * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
-   * pk_deser_i = G1Decompress(pk_i) for i in [1, 10]
-   * ds_scalar = SHA512(pk_1 || .. || pk_10) mod `period`, where `period` is the order of the group G2
-   * aggr_sig_deser = G2Decompress(aggr_sig)
-   * aggr_pk = sum_{i\in[1,10]} ds_scalar * pk_deser_i
-   * Check that pairing(aggr_pk, hashed_msg) = pairing(G1Generator, aggr_sig_deser)
+   * pk_deser_i = G2Decompress(pk_i) for i in [1, 10]
+   * ds_scalar = SHA256(pk_1 || .. || pk_10)[..16] (where [..16] represent the first 16 bytes)
+   * aggr_sig_deser = G1Decompress(aggr_sig)
+   * aggr_pk = sum_{i\in[1,10]} ds_scalar^i * pk_deser_i
+   * Check that pairing(hashed_msg, aggr_pk) = pairing(aggr_sig_deser, G2Generator)
 5. Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`. To verify the signature, proceed as follows:
-* hash = SHA512(A || pk || msg)
-  * c = hash mod `period`, where `period` is the order of the group defined over G1
+  * c = Sha256(A || pk || msg)[..16]
   * pk_deser = G1Decompress(pk)
   * A_deser = G1Decompress(A)
   * r_deser = IntegerFromBytes(r)
   * Check that r_deser * G1Generator = A_deser + c * pk_deser
 6. Schnorr signature in G2. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`.To verify the signature, proceed as follows:
-   * hash = SHA512(A || pk || msg)
-   * c = hash mod `period`, where `period` is the order of the group defined over G2
+   * hash = Sha256(A || pk || msg)[..16]
    * pk_deser = G2Decompress(pk)
    * A_deser = G2Decompress(A)
    * r_deser = IntegerFromBytes(r)
@@ -100,19 +98,19 @@ signature `(A, r)`.To verify the signature, proceed as follows:
 |    8. 0xb993f867f9f1f84c3c5c3e5b80013055da7705491c36a80e1201a6a503d7364000c50bc27e03477646874a3074cc4e390febfea78a2b4d0e40c57d6deaf9fae430a19fcce0c03f43ff8f7e788de0c7b8ce1b69b69d1d026175c8f2730777866d
 |    9. 0x99836a204576636f34a4663cfa7e02a05cb2d4fd1b582427d199ac3ddac6f087968d2290198aa15e04f6e7e0d070b7dd03607db9c2e4b17709853c30b2f6490261599408fbbc17371de74d0a2a76ff10cd8c9b55461c444bbebc82547bb40c9f
 |    10. 0x96f8d678f40dd83b2060e14372d0bc43a423fecac44f082afd89cb481b855885ac83fb366516dc74023cc41a0c606be2067ba826ea612f84c9f0e895d02bc04d6c34e201ff8c26cc22cb4c426c53f503d8948eafceb12e2f4b6ad49b4e051690
-| Aggregate Signature : 0x89d9757c2467dfd987f35c462b7a4adf8e7bfd6fb82edfd42a22f985083f4e6fc45ad2548093fb479b2bd1f48b446ae6
+| Aggregate Signature : 0xb24d876661d0d1190c796bf7eaa7e02b807ff603093b17336289d4de0477f6c17afb487275cb9de44325016edfeda042
 |
 +---------------------------------------------------------------------------+
 |                      Schnorr signature over G1                            |
 +---------------------------------------------------------------------------+
 | Message   : 0x0558db9aff738e5421439601e7f30e88b74f43b80c1d172b5d371ce0dc05c912
 | Public key: 0xb91cacee903a53383c504e9e9a39e57d1eaa6403d5d38fc9496e5007d54ca92d106d1059f09461972aa98514d07000ae
-| Signature : (0x8477e8491acc1cfbcf675acf7cf6b92e027cad7dd604a0e8205703aa2cc590066c1746f89e10d492d0230e6620c29726, 0x33a3c2fbe5945720b425471cea73db7718ea8d750dcbe24438ee74cc8f076957)
+| Signature : (0x8477e8491acc1cfbcf675acf7cf6b92e027cad7dd604a0e8205703aa2cc590066c1746f89e10d492d0230e6620c29726, 0x4e908280c0100cfe53501171ffa93528b9e2bb551d1025decb4a5b416a0aee53)
 |
 +---------------------------------------------------------------------------+
 |                      Schnorr signature over G2                            |
 +---------------------------------------------------------------------------+
 | Message   : 0x2b71175d0486006a33f14bc4e1fe711a3d4a3a3549b230013240e8f80e54372f
 | Public key: 0x88370a4b4ddc627613b0396498fb068f1c1ff8f2aa6b946a9fc65f930d24394ddc45042e602094f6a88d49a8a037e78108dce014586ff5ff5744842f382e3917d180c7eb969585748d20ae8c6e07ca786e8da7ea2c7bdef5ae1becebe4da59ad
-| Signature : (0x964851eb8823492c8720bf8c515b87043f5bab648000e63cfb6fc6fcdf6709061e0035c315cd23d239866471dea907d91568b69297dc8c4360f65d0bd399c2de19781c13bbf3a82ff1fcab8ac9f688ed96d6f2ea9a8ed057e76f0347d858ae22, 0xf579393a1c9a6743adadb9a66ab1a7208052c26461aaf7a219d798ae5d18e750)
+| Signature : (0x964851eb8823492c8720bf8c515b87043f5bab648000e63cfb6fc6fcdf6709061e0035c315cd23d239866471dea907d91568b69297dc8c4360f65d0bd399c2de19781c13bbf3a82ff1fcab8ac9f688ed96d6f2ea9a8ed057e76f0347d858ae22, 0x2c5a22cb1e2fb77586c0c6908060b38107675a6277b8a61b1d6394a162af6718)
 ```
