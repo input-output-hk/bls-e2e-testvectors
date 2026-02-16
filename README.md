@@ -67,13 +67,15 @@ signature `(A, r)`.To verify the signature, proceed as follows:
 | Message   : 0x3e00ef2f895f40d67f5bb8e81f09a5a12c840ec3ce9a7f3b181be188ef711a1e
 | Public key: 0xaa04a34d4db073e41505ebb84eee16c0094fde9fa22ec974adb36e5b3df5b2608639f091bff99b5f090b3608c3990173
 | Signature : 0x808ccec5435a63ae01e10d81be2707ab55cd0dfc235dfdf9f70ad32799e42510d67c9f61d98a6578a96a76cf6f4c105d09262ec1d86b06515360b290e7d52d347e48438de2ea2233f3c72a0c2221ed2da5e115367bca7a2712165032340e0b29
+| PoP       : 0xa873bfe32ed52ffb33a490aafb69955fee8dc4ea243be0d6fbb77dad5537a7146f559fb93422583153b6d37d6beec9c0103b8a6d4de51678191c20c1ab6b280bdb7594fc644fe70c315d3dbf35e31ef4bf9f6de97fe6e7828be4d5c14dfacb91
 |
 +---------------------------------------------------------------------------+
 |                    BLS signature with PK in G2                            |
 +---------------------------------------------------------------------------+
 | Message   : 0x5032ec38bbc5da98ee0c6f568b872a65a08abf251deb21bb4b56e5d8821e68aa
 | Public key: 0xb4953c4ba10c4d4196f90169e76faf154c260ed73fc77bb65dc3be31e0cec614a7287cda94195343676c2c57494f0e651527e6504c98408e599a4eb96f7c5a8cfb85d2fdc772f28504580084ef559b9b623bc84ce30562ed320f6b7f65245ad4
-| Signature : 0xa9d4de7b0b2805fe52bccb86415ef7b8ffecb313c3c254044dfc1bdc531d3eae999d87717822a052692140774bd7245c
+| Signature : 0x8e02b7950198d335c7b352d18880e2f6b4e7f6780298872b67840db1faa069f9a8be48800ce2ee5565a811d8230d3f05
+| PoP       : 0x9775f532816da49dd464f1239f7d70a16ca9d26e7abbd7a781e5332f6723749cbedb88cea0d8451ceb9c2fbd3fc42fcd
 |
 +---------------------------------------------------------------------------+
 | Aggregate BLS signature with same key, different message, with PK over G1 |
@@ -107,7 +109,24 @@ signature `(A, r)`.To verify the signature, proceed as follows:
 |    8. 0xb993f867f9f1f84c3c5c3e5b80013055da7705491c36a80e1201a6a503d7364000c50bc27e03477646874a3074cc4e390febfea78a2b4d0e40c57d6deaf9fae430a19fcce0c03f43ff8f7e788de0c7b8ce1b69b69d1d026175c8f2730777866d
 |    9. 0x99836a204576636f34a4663cfa7e02a05cb2d4fd1b582427d199ac3ddac6f087968d2290198aa15e04f6e7e0d070b7dd03607db9c2e4b17709853c30b2f6490261599408fbbc17371de74d0a2a76ff10cd8c9b55461c444bbebc82547bb40c9f
 |    10. 0x96f8d678f40dd83b2060e14372d0bc43a423fecac44f082afd89cb481b855885ac83fb366516dc74023cc41a0c606be2067ba826ea612f84c9f0e895d02bc04d6c34e201ff8c26cc22cb4c426c53f503d8948eafceb12e2f4b6ad49b4e051690
-| Aggregate Signature : 0xb24d876661d0d1190c796bf7eaa7e02b807ff603093b17336289d4de0477f6c17afb487275cb9de44325016edfeda042
+| Aggregate Signature : 0xab94c30fb1f46f521c36563decea526fc48428fe2e3b76f6d3a6c01ff4d0e7e8410a8d51895d13a05439673c17c245c6
+|
++---------------------------------------------------------------------------+
+| FastAggregate BLS sig (same msg, different keys), PK over G1 (PoP assumed) |
++---------------------------------------------------------------------------+
+| Message    : 0x0558db9aff738e5421439601e7f30e88b74f43b80c1d172b5d371ce0dc05c912
+| Public keys:
+|    1. 0xb91cacee903a53383c504e9e9a39e57d1eaa6403d5d38fc9496e5007d54ca92d106d1059f09461972aa98514d07000ae
+|    2. 0x8477e8491acc1cfbcf675acf7cf6b92e027cad7dd604a0e8205703aa2cc590066c1746f89e10d492d0230e6620c29726
+|    3. 0x887e8fd9c5f80beb5d0c50a2c536dffd5563dcd7fcc09dcf1aace5f481429344514b380affbc28f116a8e137fec52e90
+|    4. 0xb4928475f56d224ef82ee50ee5abc393e5894d0222068c4ade1d5a5118861b3c1486b747a759142ef75c61c74abcb82c
+|    5. 0xb15f02441de609ab5ee7b61c3350116461a48b7d530f8b1f3abf57d1fc29659d3fe05d6b7dae6ad26ba36921a91c935a
+|    6. 0xa1199c1a689c1b27ac1e902afdf3eb42f0a5231c9db61420fdeb58cd531ff98ebb7035c2fb6803aaaaad90c74e3ab6f3
+|    7. 0xb632708c4fe78944ae481ddfcbe51eb38b18292966bdce5870ed2d16a556e6a60e2f72f16643244f533c26dd97e309f4
+|    8. 0x96804e572530fd75667fc38da98ef71eda385000c5a5e1ce96ec54cfa94f494fb63c9a2bf94fda410934a5d1cb04218f
+|    9. 0xa0c2f005e87379a00a38d92fcc4927087b84a3a5284feac624db3ad6bdcc4174f25d3422b4427e2674c7546f180825ea
+|    10. 0xa14d1004c8166915fc125f03b2c5c80976c440d0c819e87912bd4f32d5dd914c3767b355bd8baef2a671d421a792e4a8
+| Aggregate Signature : 0xb359beeff652ba34474f98019f389e39bac0ff8f3b49bdb9a6e0a67da895c50431746da1faf0e8ec53d15aa90e02aef7045147840791d7d205d077acc797a40b14880769f3568babf49f45a59b2d7de199369386c7a7267fcdddc2bc36b67318
 |
 +---------------------------------------------------------------------------+
 | FastAggregate BLS sig (same msg, different keys), PK over G2 (PoP assumed) |
@@ -124,7 +143,7 @@ signature `(A, r)`.To verify the signature, proceed as follows:
 |    8. 0xac0c74306cf12d21d4889d7b28e562278a6849b0b2e152968cc23dbe7b6cf7a75a62858068d9f1dde5bf90a35e89a81e0a008a28dbcd81697fb87f603895b6361c8dfdf21110633e93f33120d8e0f7ba7c0693173e55d5b3e1284a18be5ec773
 |    9. 0x8b7cd629f5a07ddca6be75585cfc12622789811edf9d4c86ce433927450ed484942b7b377eaa383746d54bcedf1d616d0cb0fa2101e5358884578860a5960653664dbd77bb3afa61af7434c10a74636c2cbe1d61db5b47102ee017c1ab81fe7f
 |    10. 0xa27b12206e80a5e0d52d9b817bfb0097c87534b4332f430f1ad1978d8a9e33cfe63123029f64408fea181e22d25dc7c80756cb011387ad545026cc7af9a7047043b44bf07682c03a0fc7f61017ba21d842535b449afe1e7d5d51a7660f71f6b3
-| Aggregate Signature : 0x933b0f54f8eb267dad96d7a60c9de6e1198af2ba04fc81f41d0d5af8e32af0f326e3a39087653973ec91c2253304de9d
+| Aggregate Signature : 0xb0887f5c2e85596a8233cc26ce0ae94cdf0e1da3465075016a633d77de8acaefbc86497b484cf0beb36a3af90b38c3ce
 |
 +---------------------------------------------------------------------------+
 |                      Schnorr signature over G1                            |
