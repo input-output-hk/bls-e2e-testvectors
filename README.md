@@ -32,23 +32,32 @@ following:
    * aggr_sig_deser = G1Decompress(aggr_sig)
    * aggr_pk = sum_{i\in[1,10]} ds_scalar^i * pk_deser_i
    * Check that pairing(hashed_msg, aggr_pk) = pairing(aggr_sig_deser, G2Generator)
-5. FastAggregate BLS signature with different keys and same message, with PK over G2.
+5. FastAggregate BLS signature with different keys and same message, with PK over G1.
+Assumes `PoP(pk_i)` has already been verified for all i (per IETF `FastAggregateVerify`).
+This function returns a message `msg`, ten public keys `{pk_1, ..., pk_10}` (G1 compressed)
+and an aggregated signature `aggr_sig` (G2 compressed). To verify the correctness of the test vector,
+check the following:
+   * hashed_msg = G2HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
+   * aggr_pk = sum_i G1Decompress(pk_i)
+   * aggr_sig_deser = G2Decompress(aggr_sig)
+   * Check that pairing(aggr_pk, hashed_msg) == pairing(G1Generator, aggr_sig_deser)
+6. FastAggregate BLS signature with different keys and same message, with PK over G2.
 Assumes `PoP(pk_i)` has already been verified for all i (per IETF `FastAggregateVerify`).
 This function returns a message `msg`, ten public keys `{pk_1, ..., pk_10}` (G2 compressed)
 and an aggregated signature `aggr_sig` (G1 compressed). To verify the correctness of the test vector,
 check the following:
-   * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
+   * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_")
    * aggr_pk = sum_i G2Decompress(pk_i)
    * aggr_sig_deser = G1Decompress(aggr_sig)
    * Check that pairing(hashed_msg, aggr_pk) == pairing(aggr_sig_deser, G2Generator)
-6. Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
+7. Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`. To verify the signature, proceed as follows:
   * c = Sha256(A || pk || msg)[..16]
   * pk_deser = G1Decompress(pk)
   * A_deser = G1Decompress(A)
   * r_deser = IntegerFromBytes(r)
   * Check that r_deser * G1Generator = A_deser + c * pk_deser
-7. Schnorr signature in G2. This function returns a message `msg`, a public key `pk` and a
+8. Schnorr signature in G2. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`.To verify the signature, proceed as follows:
    * hash = Sha256(A || pk || msg)[..16]
    * pk_deser = G2Decompress(pk)
