@@ -143,10 +143,10 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
 
     pks.iter().for_each(|pk| hash.update(&pk.to_bytes()) );
     let out = hash.finalize();
-    println!("Output of hash: 0x{}", hex::encode(out.as_slice()));
+    println!("Output of hash: 0x{}", hex::encode(out));
     let decoded_bytes = hex::decode("fc67e8340e7cea5202939c73fcf5716b").unwrap();
     println!("hex decode: {:?}", decoded_bytes);
-    scalar_bytes[..16].copy_from_slice(&out.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&out[..16]);
     let ds_scalar = Scalar::from_bytes(&scalar_bytes).unwrap();
     println!("Scalar from hash: {:?}", ds_scalar.to_bytes());
     println!("{:?}", num_bigint::BigUint::from_bytes_le(&ds_scalar.to_bytes()));
@@ -213,7 +213,7 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
         .finalize();
 
     let mut scalar_bytes = [0u8; 32];
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
@@ -226,7 +226,7 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
         .chain(&msg)
         .finalize();
 
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
@@ -268,7 +268,7 @@ fn schnorr_g2(mut rng: impl RngCore + CryptoRng) {
         .finalize();
 
     let mut scalar_bytes = [0u8; 32];
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
@@ -281,7 +281,7 @@ fn schnorr_g2(mut rng: impl RngCore + CryptoRng) {
         .chain(&msg)
         .finalize();
 
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
