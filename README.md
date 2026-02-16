@@ -32,14 +32,23 @@ following:
    * aggr_sig_deser = G1Decompress(aggr_sig)
    * aggr_pk = sum_{i\in[1,10]} ds_scalar^i * pk_deser_i
    * Check that pairing(hashed_msg, aggr_pk) = pairing(aggr_sig_deser, G2Generator)
-5. Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
+5. FastAggregate BLS signature with different keys and same message, with PK over G2.
+Assumes `PoP(pk_i)` has already been verified for all i (per IETF `FastAggregateVerify`).
+This function returns a message `msg`, ten public keys `{pk_1, ..., pk_10}` (G2 compressed)
+and an aggregated signature `aggr_sig` (G1 compressed). To verify the correctness of the test vector,
+check the following:
+   * hashed_msg = G1HashToCurve(msg, "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_")
+   * aggr_pk = sum_i G2Decompress(pk_i)
+   * aggr_sig_deser = G1Decompress(aggr_sig)
+   * Check that pairing(hashed_msg, aggr_pk) == pairing(aggr_sig_deser, G2Generator)
+6. Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`. To verify the signature, proceed as follows:
   * c = Sha256(A || pk || msg)[..16]
   * pk_deser = G1Decompress(pk)
   * A_deser = G1Decompress(A)
   * r_deser = IntegerFromBytes(r)
   * Check that r_deser * G1Generator = A_deser + c * pk_deser
-6. Schnorr signature in G2. This function returns a message `msg`, a public key `pk` and a
+7. Schnorr signature in G2. This function returns a message `msg`, a public key `pk` and a
 signature `(A, r)`.To verify the signature, proceed as follows:
    * hash = Sha256(A || pk || msg)[..16]
    * pk_deser = G2Decompress(pk)
@@ -99,6 +108,23 @@ signature `(A, r)`.To verify the signature, proceed as follows:
 |    9. 0x99836a204576636f34a4663cfa7e02a05cb2d4fd1b582427d199ac3ddac6f087968d2290198aa15e04f6e7e0d070b7dd03607db9c2e4b17709853c30b2f6490261599408fbbc17371de74d0a2a76ff10cd8c9b55461c444bbebc82547bb40c9f
 |    10. 0x96f8d678f40dd83b2060e14372d0bc43a423fecac44f082afd89cb481b855885ac83fb366516dc74023cc41a0c606be2067ba826ea612f84c9f0e895d02bc04d6c34e201ff8c26cc22cb4c426c53f503d8948eafceb12e2f4b6ad49b4e051690
 | Aggregate Signature : 0xb24d876661d0d1190c796bf7eaa7e02b807ff603093b17336289d4de0477f6c17afb487275cb9de44325016edfeda042
+|
++---------------------------------------------------------------------------+
+| FastAggregate BLS sig (same msg, different keys), PK over G2 (PoP assumed) |
++---------------------------------------------------------------------------+
+| Message    : 0x0558db9aff738e5421439601e7f30e88b74f43b80c1d172b5d371ce0dc05c912
+| Public keys:
+|    1. 0x99325b8e11a6a1d137a4ccc09574dcfa54162f3eca88656e4aa8a8ee0e32842ff9bdbcf90800ff4b6196421a930def3d00e948c1fc67b71597ad78819fd1163daa68b419556be8dc64e48086b7604583d8beaffe755710b4b80effa910c6050d
+|    2. 0xb82da86bd84f82cc6b3f1df65ebe754d2199e49f6791a0d6db136304ab4610fadcbdf7bac09e6e10b6850aafa0b258bb08bee0214ce3fbfaa97371e67d57fc27bb423ba07d092bf6f584c5f2be72a8b2c02045de23af01bb04e9bf5be0a1d15c
+|    3. 0x99a7fff545393ac442bdf0c6043de7461301ad7ea3402f4ddf89e19c671faf28989c28251ad63385ec9dbb81857b9d3301ff6ebe7e16f21a86bf48c40f64fd27fad2c2a6b93305ae6448ba8b3756ea4d6fbbac859231e65b0242916a34b0a67a
+|    4. 0xa6444b7a2ef32fc83d85973945569d30a6dff7feb5840254a9a81fc0f78a70a97905cf196faa5f47ab6f26a0750b8f610b000537c8f73a511db4bd1657c47b531b95be021817bde5345d1c6daf10064a219def36465b0bf5c295df2ebde63535
+|    5. 0xab92c359bdccc19e44fd47120cc6d0a1d3955af9e6be18c1b084e397442055c597ff92ec134c9d8f2a788a96b28f3af4108239e00339840f3bfb666eea21e87c02bd69edca6502f7805a6dfd29fb4db4052a321abbb857621992fc383f368c91
+|    6. 0x872e0b3f67274e0808e326601ef42e22edf880f12d4d044ba5d75bf078aa0ebcad085376c15d1cc09eb8c8c9797572da003826536c8a06bdea226e6b2e0cc111ad1e645fd6c38190a72f42f514397d470534c161d028690dafb95cb1f19ff9c0
+|    7. 0xacfc575fee9be2dd324940c3cb873213532a9eddc2f546a2d8c56b5b015e2521173a4d2c05acca14aa97c6224a223b46140b3483f06ea7a2a2db3961a74074e58653549220713aa6edc8a21bbb04f468d684f7656882543143ed4cf3d5bcae69
+|    8. 0xac0c74306cf12d21d4889d7b28e562278a6849b0b2e152968cc23dbe7b6cf7a75a62858068d9f1dde5bf90a35e89a81e0a008a28dbcd81697fb87f603895b6361c8dfdf21110633e93f33120d8e0f7ba7c0693173e55d5b3e1284a18be5ec773
+|    9. 0x8b7cd629f5a07ddca6be75585cfc12622789811edf9d4c86ce433927450ed484942b7b377eaa383746d54bcedf1d616d0cb0fa2101e5358884578860a5960653664dbd77bb3afa61af7434c10a74636c2cbe1d61db5b47102ee017c1ab81fe7f
+|    10. 0xa27b12206e80a5e0d52d9b817bfb0097c87534b4332f430f1ad1978d8a9e33cfe63123029f64408fea181e22d25dc7c80756cb011387ad545026cc7af9a7047043b44bf07682c03a0fc7f61017ba21d842535b449afe1e7d5d51a7660f71f6b3
+| Aggregate Signature : 0x933b0f54f8eb267dad96d7a60c9de6e1198af2ba04fc81f41d0d5af8e32af0f326e3a39087653973ec91c2253304de9d
 |
 +---------------------------------------------------------------------------+
 |                      Schnorr signature over G1                            |

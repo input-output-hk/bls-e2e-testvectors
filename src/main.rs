@@ -185,6 +185,68 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
     println!("| Aggregate Signature : 0x{}", hex::encode(aggr_sig.to_bytes()));
 }
 
+/// FastAggregate BLS signature with different keys and same message, with PK over G2.
+/// Assumes PoP(pk_i) has already been verified for all i (per IETF FastAggregateVerify).
+///
+/// Returns:
+/// - msg
+/// - pk_1..pk_10 (G2 compressed)
+/// - aggr_sig (G1 compressed)
+///
+/// Verification:
+///   hashed_msg = G1HashToCurve(msg, DST)
+///   aggr_pk = sum_i G2Decompress(pk_i)
+///   aggr_sig = G1Decompress(aggr_sig)
+///   Check pairing(hashed_msg, aggr_pk) == pairing(aggr_sig, G2Generator)
+fn fast_aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
+    let mut msg = [0u8; 32];
+
+    println!("+---------------------------------------------------------------------------+");
+    println!("| FastAggregate BLS sig (same msg, different keys), PK over G2 (PoP assumed) |");
+    println!("+---------------------------------------------------------------------------+");
+
+    rng.fill_bytes(&mut msg);
+
+    // Hash message onto G1 (because signatures live in G1 when PKs are in G2)
+    let hashed_msg =
+        <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, DST);
+
+    // Generate 10 keypairs
+    let sks = (0..10).map(|_| Scalar::random(&mut rng)).collect::<Vec<_>>();
+    let pks = sks
+        .iter()
+        .map(|sk| sk * G2Affine::generator())
+        .collect::<Vec<_>>();
+
+    // Each signer signs the same message: sig_i = sk_i * H(msg) in G1
+    let sigs = sks
+        .iter()
+        .map(|sk| sk * hashed_msg)
+        .collect::<Vec<_>>();
+
+    // Fast aggregation is simple addition (NO coefficient / DS trick)
+    let aggr_sig: G1Projective = sigs.iter().sum();
+    let aggr_pk: G2Projective = pks.iter().sum();
+
+    // FastAggregateVerify pairing check
+    assert_eq!(
+        pairing(&hashed_msg.to_affine(), &aggr_pk.to_affine()),
+        pairing(&aggr_sig.to_affine(), &G2Affine::generator())
+    );
+
+    // Print vectors (similar format to existing ones)
+    println!("| Message    : 0x{}", hex::encode(msg));
+    println!("| Public keys:");
+    for (index, pk) in pks.iter().enumerate() {
+        println!("|    {}. 0x{}", index + 1, hex::encode(pk.to_bytes()));
+    }
+    println!(
+        "| Aggregate Signature : 0x{}",
+        hex::encode(aggr_sig.to_bytes())
+    );
+}
+
+
 /// Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
 /// signature `(A, r)`.
 ///
@@ -308,6 +370,8 @@ fn main() {
     aggr_bls_diff_msg_pk_g1(&mut rng);
     println!("|");
     aggr_bls_same_msg_pk_g2(&mut rng);
+    println!("|");
+    fast_aggr_bls_same_msg_pk_g2(&mut rng);
     println!("|");
     schnorr_g1(&mut rng);
     println!("|");
