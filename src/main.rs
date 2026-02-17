@@ -9,8 +9,10 @@ use group::{Curve, GroupEncoding};
 use rand::{CryptoRng, Rng, RngCore, SeedableRng};
 use rand_chacha::{ChaCha8Rng};
 
-
-const DST: &[u8; 43] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
+const SIG_DST_G1: &[u8; 43] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_";
+const SIG_DST_G2: &[u8; 43] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_";
+const POP_DST_G1: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_";
+const POP_DST_G2: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
 /// BLS signature with the public key over G1. This function returns a message `msg`, a public
 /// key `pk`, and a signature `sig`. Verification of these test vectors should proceed as follows:
@@ -27,7 +29,7 @@ fn bls_pk_g1(mut rng: impl RngCore + CryptoRng) {
 
     let sk = Scalar::random(&mut rng);
     let pk = sk * G1Affine::generator();
-    let hashed_msg = <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, DST);
+    let hashed_msg = <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg,SIG_DST_G2);
 
     let signature = sk * hashed_msg;
 
@@ -36,9 +38,21 @@ fn bls_pk_g1(mut rng: impl RngCore + CryptoRng) {
         pairing(&G1Affine::generator(), &signature.to_affine())
     );
 
+    // PoP: sign(pk_bytes) in G2 with POP DST for the G2 ciphersuite
+    let pk_bytes = pk.to_bytes();
+    let hashed_pk =
+        <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(pk_bytes.as_ref(), POP_DST_G2);
+    let pop = sk * hashed_pk;
+
+    assert_eq!(
+        pairing(&pk.to_affine(), &hashed_pk.to_affine()),
+        pairing(&G1Affine::generator(), &pop.to_affine())
+    );
+
     println!("| Message   : 0x{}", hex::encode(msg));
     println!("| Public key: 0x{}", hex::encode(pk.to_bytes()));
     println!("| Signature : 0x{}", hex::encode(signature.to_bytes()));
+    println!("| PoP       : 0x{}", hex::encode(pop.to_bytes()));
 }
 
 /// BLS signature with the public key over G2. This function returns a message `msg`, a public
@@ -56,7 +70,7 @@ fn bls_pk_g2(mut rng: impl RngCore + CryptoRng) {
 
     let sk = Scalar::random(&mut rng);
     let pk = sk * G2Affine::generator();
-    let hashed_msg = <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, DST);
+    let hashed_msg = <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, SIG_DST_G1);
 
     let signature = sk * hashed_msg;
 
@@ -65,11 +79,20 @@ fn bls_pk_g2(mut rng: impl RngCore + CryptoRng) {
         pairing(&signature.to_affine(), &G2Affine::generator())
     );
 
+    let pk_bytes = pk.to_bytes();
+    let hashed_pk =
+        <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(pk_bytes.as_ref(), POP_DST_G1);
+    let pop = sk * hashed_pk;
 
+    assert_eq!(
+        pairing(&hashed_pk.to_affine(), &pk.to_affine()),
+        pairing(&pop.to_affine(), &G2Affine::generator())
+    );
 
     println!("| Message   : 0x{}", hex::encode(msg));
     println!("| Public key: 0x{}", hex::encode(pk.to_bytes()));
     println!("| Signature : 0x{}", hex::encode(signature.to_bytes()));
+    println!("| PoP       : 0x{}", hex::encode(pop.to_bytes()));
 }
 
 /// Aggregate BLS signature with the same key and different messages, with public key over G1. This
@@ -94,7 +117,7 @@ fn aggr_bls_diff_msg_pk_g1(mut rng: impl RngCore + CryptoRng) {
 
     let hashed_msgs = msgs
         .iter()
-        .map(|msg| <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, DST))
+        .map(|msg| <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, SIG_DST_G2))
         .collect::<Vec<_>>();
 
     let sigs = hashed_msgs
@@ -133,7 +156,7 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
     println!("| Aggregate BLS signature with different key, same message, with PK over G2 |");
     println!("+---------------------------------------------------------------------------+");
     rng.fill_bytes(&mut msg);
-    let hashed_msg = <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, DST);
+    let hashed_msg = <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, SIG_DST_G1);
 
     let sks = (0..10).map(|_| Scalar::random(&mut rng)).collect::<Vec<_>>();
     let pks = sks.iter().map(|sk| sk * G2Affine::generator()).collect::<Vec<_>>();
@@ -143,14 +166,8 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
 
     pks.iter().for_each(|pk| hash.update(&pk.to_bytes()) );
     let out = hash.finalize();
-    println!("Output of hash: 0x{}", hex::encode(out.as_slice()));
-    let decoded_bytes = hex::decode("fc67e8340e7cea5202939c73fcf5716b").unwrap();
-    println!("hex decode: {:?}", decoded_bytes);
-    scalar_bytes[..16].copy_from_slice(&out.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&out[..16]);
     let ds_scalar = Scalar::from_bytes(&scalar_bytes).unwrap();
-    println!("Scalar from hash: {:?}", ds_scalar.to_bytes());
-    println!("{:?}", num_bigint::BigUint::from_bytes_le(&ds_scalar.to_bytes()));
-    println!("{:?}", num_bigint::BigUint::from_bytes_be(&decoded_bytes));
 
     let mut ds_scalar_power = Scalar::one();
 
@@ -171,8 +188,6 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
         acc + ds_scalar_power * pk
     });
 
-    println!("Aggregate pk: {:?}", hex::encode(aggr_pk.to_bytes()));
-
     assert_eq!(pairing(&hashed_msg.to_affine(), &aggr_pk.to_affine()), pairing(&aggr_sig.to_affine(), &G2Affine::generator()));
 
 
@@ -184,6 +199,129 @@ fn aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
 
     println!("| Aggregate Signature : 0x{}", hex::encode(aggr_sig.to_bytes()));
 }
+
+/// FastAggregate BLS signature with different keys and same message, with PK over G1.
+/// Assumes PoP(pk_i) has already been verified for all i (per IETF FastAggregateVerify).
+///
+/// Returns:
+/// - msg
+/// - pk_1..pk_10 (G1 compressed)
+/// - aggr_sig (G2 compressed)
+///
+/// Verification:
+///   hashed_msg = G2HashToCurve(msg, DST)
+///   aggr_pk = sum_i G1Decompress(pk_i)
+///   aggr_sig = G2Decompress(aggr_sig)
+///   Check pairing(aggr_pk, hashed_msg) == pairing(G1Generator, aggr_sig)
+fn fast_aggr_bls_same_msg_pk_g1(mut rng: impl RngCore + CryptoRng) {
+    let mut msg = [0u8; 32];
+
+    println!("+---------------------------------------------------------------------------+");
+    println!("| FastAggregate BLS sig (same msg, different keys), PK over G1 (PoP assumed) |");
+    println!("+---------------------------------------------------------------------------+");
+
+    rng.fill_bytes(&mut msg);
+
+    // Hash message onto G2 (because signatures live in G2 when PKs are in G1)
+    let hashed_msg =
+        <G2Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, SIG_DST_G2);
+
+    // Generate 10 keypairs
+    let sks = (0..10).map(|_| Scalar::random(&mut rng)).collect::<Vec<_>>();
+    let pks = sks
+        .iter()
+        .map(|sk| sk * G1Affine::generator())
+        .collect::<Vec<_>>();
+
+    // Each signer signs the same message: sig_i = sk_i * H(msg) in G2
+    let sigs = sks
+        .iter()
+        .map(|sk| sk * hashed_msg)
+        .collect::<Vec<_>>();
+
+    // Fast aggregation is simple addition (NO coefficient / DS trick)
+    let aggr_sig: G2Projective = sigs.iter().sum();
+    let aggr_pk: G1Projective = pks.iter().sum();
+
+    // FastAggregateVerify pairing check
+    assert_eq!(
+        pairing(&aggr_pk.to_affine(),&hashed_msg.to_affine(),),
+        pairing(&G1Affine::generator(), &aggr_sig.to_affine())
+    );
+
+    // Print vectors (similar format to existing ones)
+    println!("| Message    : 0x{}", hex::encode(msg));
+    println!("| Public keys:");
+    for (index, pk) in pks.iter().enumerate() {
+        println!("|    {}. 0x{}", index + 1, hex::encode(pk.to_bytes()));
+    }
+    println!(
+        "| Aggregate Signature : 0x{}",
+        hex::encode(aggr_sig.to_bytes())
+    );
+}
+
+/// FastAggregate BLS signature with different keys and same message, with PK over G2.
+/// Assumes PoP(pk_i) has already been verified for all i (per IETF FastAggregateVerify).
+///
+/// Returns:
+/// - msg
+/// - pk_1..pk_10 (G2 compressed)
+/// - aggr_sig (G1 compressed)
+///
+/// Verification:
+///   hashed_msg = G1HashToCurve(msg, DST)
+///   aggr_pk = sum_i G2Decompress(pk_i)
+///   aggr_sig = G1Decompress(aggr_sig)
+///   Check pairing(hashed_msg, aggr_pk) == pairing(aggr_sig, G2Generator)
+fn fast_aggr_bls_same_msg_pk_g2(mut rng: impl RngCore + CryptoRng) {
+    let mut msg = [0u8; 32];
+
+    println!("+---------------------------------------------------------------------------+");
+    println!("| FastAggregate BLS sig (same msg, different keys), PK over G2 (PoP assumed) |");
+    println!("+---------------------------------------------------------------------------+");
+
+    rng.fill_bytes(&mut msg);
+
+    // Hash message onto G1 (because signatures live in G1 when PKs are in G2)
+    let hashed_msg =
+        <G1Projective as HashToCurve<ExpandMsgXmd<Sha256>>>::hash_to_curve(msg, SIG_DST_G1);
+
+    // Generate 10 keypairs
+    let sks = (0..10).map(|_| Scalar::random(&mut rng)).collect::<Vec<_>>();
+    let pks = sks
+        .iter()
+        .map(|sk| sk * G2Affine::generator())
+        .collect::<Vec<_>>();
+
+    // Each signer signs the same message: sig_i = sk_i * H(msg) in G1
+    let sigs = sks
+        .iter()
+        .map(|sk| sk * hashed_msg)
+        .collect::<Vec<_>>();
+
+    // Fast aggregation is simple addition (NO coefficient / DS trick)
+    let aggr_sig: G1Projective = sigs.iter().sum();
+    let aggr_pk: G2Projective = pks.iter().sum();
+
+    // FastAggregateVerify pairing check
+    assert_eq!(
+        pairing(&hashed_msg.to_affine(), &aggr_pk.to_affine()),
+        pairing(&aggr_sig.to_affine(), &G2Affine::generator())
+    );
+
+    // Print vectors (similar format to existing ones)
+    println!("| Message    : 0x{}", hex::encode(msg));
+    println!("| Public keys:");
+    for (index, pk) in pks.iter().enumerate() {
+        println!("|    {}. 0x{}", index + 1, hex::encode(pk.to_bytes()));
+    }
+    println!(
+        "| Aggregate Signature : 0x{}",
+        hex::encode(aggr_sig.to_bytes())
+    );
+}
+
 
 /// Schnorr signature in G1. This function returns a message `msg`, a public key `pk` and a
 /// signature `(A, r)`.
@@ -213,7 +351,7 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
         .finalize();
 
     let mut scalar_bytes = [0u8; 32];
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
@@ -226,7 +364,7 @@ fn schnorr_g1(mut rng: impl RngCore + CryptoRng) {
         .chain(&msg)
         .finalize();
 
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
@@ -268,7 +406,7 @@ fn schnorr_g2(mut rng: impl RngCore + CryptoRng) {
         .finalize();
 
     let mut scalar_bytes = [0u8; 32];
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
     let response = nonce + challenge * sk;
 
@@ -281,7 +419,7 @@ fn schnorr_g2(mut rng: impl RngCore + CryptoRng) {
         .chain(&msg)
         .finalize();
 
-    scalar_bytes[..16].copy_from_slice(&hasher.as_slice()[..16]);
+    scalar_bytes[..16].copy_from_slice(&hasher[..16]);
     let challenge = Scalar::from_bytes(&scalar_bytes).unwrap();
 
     assert_eq!(
@@ -308,6 +446,10 @@ fn main() {
     aggr_bls_diff_msg_pk_g1(&mut rng);
     println!("|");
     aggr_bls_same_msg_pk_g2(&mut rng);
+    println!("|");
+    fast_aggr_bls_same_msg_pk_g1(&mut rng);
+    println!("|");
+    fast_aggr_bls_same_msg_pk_g2(&mut rng);
     println!("|");
     schnorr_g1(&mut rng);
     println!("|");
